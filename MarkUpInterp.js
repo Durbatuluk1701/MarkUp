@@ -10,17 +10,6 @@ var MarkupNodeType;
     MarkupNodeType["BR"] = "br";
 })(MarkupNodeType || (MarkupNodeType = {}));
 ;
-var createHtmlSkeleton = function (tag, innerHtml) {
-    var newSkeleton = {
-        innerHtml: innerHtml !== null && innerHtml !== void 0 ? innerHtml : "",
-        children: [],
-        tag: tag !== null && tag !== void 0 ? tag : "",
-        appendChild: function (child) {
-            newSkeleton.children.push(child);
-        }
-    };
-    return newSkeleton;
-};
 var FileToString = function (filePath) {
     var fileString = "";
     return fileString;
@@ -48,20 +37,14 @@ var NodeParser = function (inputString) {
     return nodeList;
 };
 var Interp = function (inputProg) {
-    var RootElem = createHtmlSkeleton("div");
+    var RootElem = document.createElement("div");
+    RootElem.id = "interpRoot";
     inputProg.forEach(function (value) {
-        var newElem = createHtmlSkeleton(value.type, value.data);
+        var newElem = document.createElement(value.type);
+        newElem.innerText = value.data;
         RootElem.appendChild(newElem);
     });
     return RootElem;
-};
-var SkeletonToHTML = function (rootElem) {
-    var newRoot = document.createElement(rootElem.tag);
-    newRoot.innerHTML = rootElem.innerHtml;
-    rootElem.children.forEach(function (child) {
-        newRoot.appendChild(SkeletonToHTML(child));
-    });
-    return newRoot;
 };
 var SwapModes = function () {
     displayMode = !displayMode;
@@ -80,8 +63,7 @@ window.addEventListener("keydown", function (e) {
         var textBoxInput = TextBox.value;
         var nodes = NodeParser(textBoxInput);
         var htmlInterp = Interp(nodes);
-        var interpedElem = SkeletonToHTML(htmlInterp);
-        RootDiv.appendChild(interpedElem);
+        RootDiv.appendChild(htmlInterp);
         SwapModes();
     }
 });

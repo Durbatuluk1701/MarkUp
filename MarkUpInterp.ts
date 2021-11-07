@@ -1,37 +1,8 @@
+import { AbstractMarkUpNode, MarkupNodeType } from "./InterpTypes";
+
 const TextBox = document.querySelector("#textBox") as HTMLInputElement;
 const RootDiv = document.querySelector("#root") as HTMLDivElement;
-
-interface AbstractMarkUpNode {
-    data: string;
-    type: MarkupNodeType;
-};
-
-interface HtmlSkeleton {
-    innerHtml: string;
-    children: HtmlSkeleton[];
-    tag: string;
-    appendChild: (child: HtmlSkeleton) => void;
-}
-
-enum MarkupNodeType {
-    H1 = "h1",
-    H2 = "h2",
-    H3 = "h3",
-    P = "p",
-    BR = "br",
-};
-
-const createHtmlSkeleton = (tag?: string , innerHtml?: string): HtmlSkeleton => {
-    const newSkeleton: HtmlSkeleton = {
-        innerHtml: innerHtml ?? "",
-        children: [],
-        tag: tag ?? "",
-        appendChild: (child: HtmlSkeleton) => {
-            newSkeleton.children.push(child);
-        }
-    }
-    return newSkeleton;
-}
+let displayMode = false;
 
 const FileToString = (filePath: string): string => {
     // Read file to string
@@ -63,22 +34,15 @@ const NodeParser = (inputString: string): AbstractMarkUpNode[] => {
     return nodeList;
 }
 
-const Interp = (inputProg: AbstractMarkUpNode[]): HtmlSkeleton => {
-    const RootElem = createHtmlSkeleton("div");
+const Interp = (inputProg: AbstractMarkUpNode[]): HTMLElement => {
+    const RootElem = document.createElement("div");
+    RootElem.id = "interpRoot";
     inputProg.forEach((value: AbstractMarkUpNode) => {
-        let newElem = createHtmlSkeleton(value.type, value.data);
+        let newElem = document.createElement(value.type);
+        newElem.innerText = value.data;
         RootElem.appendChild(newElem);
     })
     return RootElem;
-}
-
-const SkeletonToHTML = (rootElem: HtmlSkeleton): HTMLElement => {
-    const newRoot = document.createElement(rootElem.tag);
-    newRoot.innerHTML = rootElem.innerHtml;
-    rootElem.children.forEach((child) => {
-        newRoot.appendChild(SkeletonToHTML(child));
-    })
-    return newRoot;
 }
 
 const SwapModes = () => {
@@ -88,8 +52,6 @@ const SwapModes = () => {
     document.title = "MarkUp - " + (displayMode ? "Viewer" : "Interpreter");
 }
 
-
-let displayMode = false;
 window.addEventListener("keydown", (e) => {
     if (e.altKey && e.key == "Enter") {
         if (displayMode) {
@@ -101,8 +63,7 @@ window.addEventListener("keydown", (e) => {
        let textBoxInput = TextBox.value;
        let nodes = NodeParser(textBoxInput);
        let htmlInterp = Interp(nodes);
-       let interpedElem = SkeletonToHTML(htmlInterp);
-       RootDiv.appendChild(interpedElem);
+       RootDiv.appendChild(htmlInterp);
        SwapModes();
     }
 })
