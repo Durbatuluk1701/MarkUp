@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "lib": ["ES6", "DOM"],
+        "module": "commonjs",
+        "noImplicitAny": true,
+        "removeComments": true,
+        "preserveConstEnums": true,
+    },
+    "include": [
+        "*.ts"
+    ]
+}

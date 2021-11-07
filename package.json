@@ -1,0 +1,23 @@
+{
+  "name": "markup",
+  "version": "1.0.0",
+  "description": "Markdown but Up on the Web",
+  "main": "MarkUpInterp.js",
+  "dependencies": {
+    "typescript": "^4.4.4"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Durbatuluk1701/MarkUp.git"
+  },
+  "author": "Durbatuluk1701",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Durbatuluk1701/MarkUp/issues"
+  },
+  "homepage": "https://github.com/Durbatuluk1701/MarkUp#readme"
+}
