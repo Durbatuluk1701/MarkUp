@@ -1,5 +1,3 @@
-var TextBox = document.querySelector("#textBox");
-var RootDiv = document.querySelector("#root");
 ;
 var MarkupNodeType;
 (function (MarkupNodeType) {
@@ -10,6 +8,9 @@ var MarkupNodeType;
     MarkupNodeType["BR"] = "br";
 })(MarkupNodeType || (MarkupNodeType = {}));
 ;
+var TextBox = document.querySelector("#textBox");
+var RootDiv = document.querySelector("#root");
+var displayMode = false;
 var FileToString = function (filePath) {
     var fileString = "";
     return fileString;
@@ -52,9 +53,8 @@ var SwapModes = function () {
     RootDiv.hidden = !displayMode;
     document.title = "MarkUp - " + (displayMode ? "Viewer" : "Interpreter");
 };
-var displayMode = false;
 window.addEventListener("keydown", function (e) {
-    if (e.altKey && e.key == "Enter") {
+    if (e.ctrlKey && e.key == "Enter") {
         if (displayMode) {
             RootDiv.firstChild.remove();
             SwapModes();

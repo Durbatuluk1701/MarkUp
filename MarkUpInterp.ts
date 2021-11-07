@@ -1,4 +1,15 @@
-import { AbstractMarkUpNode, MarkupNodeType } from "./InterpTypes";
+interface AbstractMarkUpNode {
+    data: string;
+    type: MarkupNodeType;
+};
+
+enum MarkupNodeType {
+    H1 = "h1",
+    H2 = "h2",
+    H3 = "h3",
+    P = "p",
+    BR = "br",
+};
 
 const TextBox = document.querySelector("#textBox") as HTMLInputElement;
 const RootDiv = document.querySelector("#root") as HTMLDivElement;
@@ -53,7 +64,7 @@ const SwapModes = () => {
 }
 
 window.addEventListener("keydown", (e) => {
-    if (e.altKey && e.key == "Enter") {
+    if (e.ctrlKey && e.key == "Enter") {
         if (displayMode) {
             // Restore and return
             RootDiv.firstChild.remove();
