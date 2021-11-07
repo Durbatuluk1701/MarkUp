@@ -6,6 +6,8 @@ var MarkupNodeType;
     MarkupNodeType["H1"] = "h1";
     MarkupNodeType["H2"] = "h2";
     MarkupNodeType["H3"] = "h3";
+    MarkupNodeType["P"] = "p";
+    MarkupNodeType["BR"] = "br";
 })(MarkupNodeType || (MarkupNodeType = {}));
 ;
 var createHtmlSkeleton = function (tag, innerHtml) {
@@ -36,6 +38,12 @@ var NodeParser = function (inputString) {
         else if (line.startsWith("#")) {
             nodeList.push({ data: line.substr(1), type: MarkupNodeType.H1 });
         }
+        else if (line === "") {
+            nodeList.push({ data: "", type: MarkupNodeType.BR });
+        }
+        else {
+            nodeList.push({ data: line, type: MarkupNodeType.P });
+        }
     });
     return nodeList;
 };
@@ -59,6 +67,7 @@ var SwapModes = function () {
     displayMode = !displayMode;
     TextBox.hidden = displayMode;
     RootDiv.hidden = !displayMode;
+    document.title = "MarkUp - " + (displayMode ? "Viewer" : "Interpreter");
 };
 var displayMode = false;
 window.addEventListener("keydown", function (e) {

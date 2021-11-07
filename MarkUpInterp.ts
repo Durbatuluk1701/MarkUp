@@ -16,7 +16,9 @@ interface HtmlSkeleton {
 enum MarkupNodeType {
     H1 = "h1",
     H2 = "h2",
-    H3 = "h3"
+    H3 = "h3",
+    P = "p",
+    BR = "br",
 };
 
 const createHtmlSkeleton = (tag?: string , innerHtml?: string): HtmlSkeleton => {
@@ -37,11 +39,11 @@ const FileToString = (filePath: string): string => {
     return fileString;
 }
 
-const NodeParser = (inputString: String): AbstractMarkUpNode[] => {
+const NodeParser = (inputString: string): AbstractMarkUpNode[] => {
     // We need to parse line by line (probably at least for now)
     let lineList = inputString.split("\n");
     let nodeList = new Array<AbstractMarkUpNode>();
-    lineList.forEach((line: String) => {
+    lineList.forEach((line: string) => {
         if (line.startsWith("###")) {
             // H3
             nodeList.push({ data: line.substr(3), type: MarkupNodeType.H3 })
@@ -51,6 +53,11 @@ const NodeParser = (inputString: String): AbstractMarkUpNode[] => {
         } else if (line.startsWith("#")) {
             // H1
             nodeList.push({ data: line.substr(1), type: MarkupNodeType.H1 })
+        } else if (line === "") {
+            // Break
+            nodeList.push({ data: "", type: MarkupNodeType.BR })
+        } else {
+            nodeList.push({ data: line, type: MarkupNodeType.P });
         }
     })
     return nodeList;
@@ -78,6 +85,7 @@ const SwapModes = () => {
     displayMode = !displayMode;
     TextBox.hidden = displayMode;
     RootDiv.hidden = !displayMode;
+    document.title = "MarkUp - " + (displayMode ? "Viewer" : "Interpreter");
 }
 
 
