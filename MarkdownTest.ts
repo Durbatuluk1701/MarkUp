@@ -1,5 +1,5 @@
-import { Tokenize } from "./Tokenizer";
-import { Parser } from "./Parser";
+import { Parser } from "ts-parso/Parser";
+import { Tokenize } from "ts-parso/Tokenizer";
 
 const token_desc_list: TokenDescription[] = [
   {
@@ -179,23 +179,7 @@ const gram: Grammar = [
       ["UnorderedListElem", "Prog"],
       ["Text", "Prog"],
     ],
-    callback: ({
-      match,
-      notTopLevel,
-    }: {
-      match: (RuleMatch | Token)[];
-      notTopLevel?: boolean;
-    }) => {
-      if (notTopLevel) {
-        // We know this is not the top
-      } else {
-        // This must be the top level, add surrounding stuff
-        // Generating sub-rule matches
-        match.forEach((rm) => {
-          rm?.rule;
-        });
-      }
-    },
+    callback: () => {},
   },
 ];
 
