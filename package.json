@@ -4,6 +4,7 @@
   "description": "Markdown but Up on the Web",
   "main": "MarkUpInterp.js",
   "dependencies": {
+    "katex": "^0.16.4",
     "ts-parso": "^0.3.0",
     "typescript": "^4.4.4"
   },
