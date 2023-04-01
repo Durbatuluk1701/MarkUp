@@ -1,5 +1,5 @@
-import { Parser } from "ts-parso/Parser";
-import { Tokenize } from "ts-parso/Tokenizer";
+import { Parser, Tokenize } from "ts-parso/index";
+import fs from "fs";
 
 const token_desc_list: TokenDescription[] = [
   {
@@ -34,7 +34,7 @@ const token_desc_list: TokenDescription[] = [
   },
   {
     name: "NUM_DOT",
-    description: /\d+./,
+    description: /\d+\./,
     precedence: 13,
   },
   {
@@ -75,84 +75,195 @@ const token_desc_list: TokenDescription[] = [
 ];
 
 const test_str =
-  "# Testing \n### This is a little header\nand we can **have baby** text under it\nmore *text* can be adding, how it will be parsed\nI am not quite sure.\n\nLet us see _how_ this works, __this would be bold I think__.\n Now we see that # hashes midway should be preserved.\n> Can we do blockquotes?\n>> How about nested ones\n1. This is some stuff\n2. More stuff\n3. Again another list item\n- Now lets try for an unordered list\n- Can we do it?\n\t- Indented list?!\n\t- Im not sure.\nNow, lets try code inside here `hello my code stuff`\n---\nA horizontal rule might be nice\nHere is a link [Duck Duck Go](https://duckduckgo.com).\n";
+  "# Testing\n### This is a little header\nand we can **have baby** text under it\nmore *text* can be adding, how it will be parsed\nI am not quite sure.\n\nLet us see _how_ this works, __this would be bold I think__.\n Now we see that # hashes midway should be preserved.\n> Can we do blockquotes?\n>> How about nested ones\n1. This is some stuff\n2. More stuff\n3. Again another list item\n- Now lets try for an unordered list\n- Can we do it?\n\t- Indented list?!\n\t- Im not sure.\nNow, lets try code inside here `hello my code stuff`\n---\nA horizontal rule might be nice\nHere is a link [Duck Duck Go](https://duckduckgo.com).\n";
 const output_tokens = Tokenize(test_str, token_desc_list);
-debugger;
-console.log("output tokens", output_tokens);
 
-const gram: Grammar = [
+const gram: Grammar<string> = [
   {
+    type: "Rule",
     name: "HorizontalRule",
     pattern: [["DASH", "DASH", "DASH"]],
-    callback: () => {},
+    callback: (r: RuleMatch<string>) => {
+      return "<hr>";
+    },
   },
   {
+    type: "Rule",
     name: "Head1",
     pattern: [["HASH", "STR", "BR"]],
-    callback: () => {},
+    callback: (r: RuleMatch<string>) => {
+      const strToken = r.match[1];
+      if (strToken.rule.type === "Token") {
+        return `<h1>${strToken.rule.match}</h1>`;
+      } else {
+        throw new Error(
+          "HEAD1: Expecting a STR, when we instead got an extended rule."
+        );
+      }
+    },
   },
   {
+    type: "Rule",
     name: "Head2",
     pattern: [["HASH", "HASH", "STR", "BR"]],
-    callback: () => {},
+    callback: (r: RuleMatch<string>) => {
+      const strToken = r.match[2];
+      if (strToken.rule.type === "Token") {
+        return `<h2>${strToken.rule.match}</h2>`;
+      } else {
+        throw new Error(
+          "HEAD2: Expecting a STR, when we instead got an extended rule."
+        );
+      }
+    },
   },
   {
+    type: "Rule",
     name: "Head3",
     pattern: [["HASH", "HASH", "HASH", "STR", "BR"]],
-    callback: () => {},
+    callback: (r: RuleMatch<string>) => {
+      const strToken = r.match[3];
+      if (strToken.rule.type === "Token") {
+        return `<h3>${strToken.rule.match}</h3>`;
+      } else {
+        throw new Error(
+          "HEAD3: Expecting a STR, when we instead got an extended rule."
+        );
+      }
+    },
   },
   {
+    type: "Rule",
     name: "Indent",
     pattern: [["TAB"]],
-    callback: () => {},
+    callback: (r: RuleMatch<string>) => {
+      return "";
+    },
   },
   {
+    type: "Rule",
     name: "BlockQuote",
-    pattern: [["GT", "Prog"]],
-    callback: () => {},
+    // TODO: Add better nesting handling
+    pattern: [["GT", "Text"]],
+    callback: (r: RuleMatch<string>, context) => {
+      const subProgRule = r.match[1].rule;
+      if (subProgRule.type === "Rule") {
+        return `<blockquote>${subProgRule.callback(
+          r.match[1],
+          context
+        )}</blockquote>`;
+      }
+      throw new Error("Error in 'BlockQuote', subProg is not a rule");
+    },
   },
   {
+    type: "Rule",
     name: "OrderedListElem",
     pattern: [["NUM_DOT", "STR", "BR"]],
-    callback: () => {},
+    callback: (r: RuleMatch<string>) => {
+      const strToken = r.match[1];
+      if (strToken.rule.type === "Token") {
+        return `<li>${strToken.rule.match}</li>`;
+      } else {
+        throw new Error(
+          "OrderedListElem: Expecting a STR, when we instead got an extended rule."
+        );
+      }
+    },
   },
   {
+    type: "Rule",
     name: "UnorderedListElem",
     pattern: [["DASH", "STR", "BR"]],
-    callback: () => {},
+    callback: (r: RuleMatch<string>) => {
+      const strToken = r.match[1];
+      if (strToken.rule.type === "Token") {
+        return `<li>${strToken.rule.match}</li>`;
+      } else {
+        throw new Error(
+          "UnorderedListElem: Expecting a STR, when we instead got an extended rule."
+        );
+      }
+    },
   },
+  // {
+  //   type: "Rule",
+  //   name: "BlockQuote",
+  //   pattern: [["GT", "Prog"]],
+  //   callback: () => {},
+  // },
   {
-    name: "BlockQuote",
-    pattern: [["GT", "Prog"]],
-    callback: () => {},
-  },
-  {
+    type: "Rule",
     name: "Bold",
     pattern: [
       ["STAR", "STAR", "STR", "STAR", "STAR"],
       ["UNDER", "UNDER", "STR", "UNDER", "UNDER"],
     ],
-    callback: () => {},
+    callback: (r: RuleMatch<string>) => {
+      const strToken = r.match[2];
+      if (strToken.rule.type === "Token") {
+        return `<b>${strToken.rule.match}</b>`;
+      } else {
+        throw new Error(
+          "Bold: Expecting a STR, when we instead got an extended rule."
+        );
+      }
+    },
   },
   {
+    type: "Rule",
     name: "Code",
     pattern: [["BACKTICK", "STR", "BACKTICK"]],
-    callback: () => {},
+    callback: (r: RuleMatch<string>) => {
+      const strToken = r.match[1];
+      if (strToken.rule.type === "Token") {
+        return `<code>${strToken.rule.match}</code>`;
+      } else {
+        throw new Error(
+          "Code: Expecting a STR, when we instead got an extended rule."
+        );
+      }
+    },
   },
   {
+    type: "Rule",
     name: "Link",
     pattern: [["LBRACKET", "STR", "RBRACKET", "LPAREN", "STR", "RPAREN"]],
-    callback: () => {},
+    callback: (r: RuleMatch<string>) => {
+      const strNameToken = r.match[1];
+      const strHrefToken = r.match[4];
+      if (
+        strNameToken.rule.type === "Token" &&
+        strHrefToken.rule.type === "Token"
+      ) {
+        return `<a href="${strHrefToken.rule.match}">${strNameToken.rule.match}</a>`;
+      } else {
+        throw new Error(
+          "Link Element: Expecting a STR, when we instead got an extended rule."
+        );
+      }
+    },
   },
   {
+    type: "Rule",
     name: "Italic",
     pattern: [
       ["STAR", "STR", "STAR"],
       ["UNDER", "STR", "UNDER"],
     ],
-    callback: () => {},
+    callback: (r: RuleMatch<string>) => {
+      const strToken = r.match[1];
+      if (strToken.rule.type === "Token") {
+        return `<em>${strToken.rule.match}</em>`;
+      } else {
+        throw new Error(
+          "Italic: Expecting a STR, when we instead got an extended rule."
+        );
+      }
+    },
   },
   {
+    type: "Rule",
     name: "Text",
     pattern: [
       ["STR", "Text"],
@@ -163,12 +274,46 @@ const gram: Grammar = [
       ["Link", "Text"],
       ["EMPTY"],
     ],
-    callback: () => {},
+    callback: (r: RuleMatch<string>, context) => {
+      let outputs = "";
+      let previousBR = false;
+      for (const rule of r.match) {
+        if (rule.rule.type === "Token") {
+          // We are a token, so STR or BR
+          if (rule.rule.name === "BR") {
+            // We are a BR
+            if (previousBR === true) {
+              // Add a break
+              outputs += "<br>";
+              previousBR = false;
+              continue;
+            } else {
+              // We have not seen a previous BR, so set flag
+              previousBR = true;
+              outputs += "\n";
+              continue;
+            }
+          } else if (rule.rule.name === "STR") {
+            outputs += rule.rule.match;
+            continue;
+          } else {
+            throw new Error(
+              `We should only be a STR, or BR, but instead were a '${rule.rule.name}'`
+            );
+          }
+        } else if (rule.rule.type === "Rule") {
+          const currentOutput = rule.rule.callback(rule, context);
+          outputs += currentOutput;
+        }
+        previousBR = false;
+      }
+      return outputs;
+    },
   },
   {
+    type: "Rule",
     name: "Prog",
     pattern: [
-      ["EMPTY"],
       ["HorizontalRule", "Prog"],
       ["Head1", "Prog"],
       ["Head2", "Prog"],
@@ -178,8 +323,64 @@ const gram: Grammar = [
       ["OrderedListElem", "Prog"],
       ["UnorderedListElem", "Prog"],
       ["Text", "Prog"],
+      ["EMPTY"], // IMPORTANT THAT THIS BE HERE
+      // TODO: Make more flexible so Empty need not be the last rule
     ],
-    callback: () => {},
+    callback: (r: RuleMatch<string>, context) => {
+      let outputs = "";
+      const openItems: string[] = context.openItems;
+      for (const rule of r.match) {
+        if (rule.rule.type === "Rule") {
+          // const ruleOutput =
+          if (rule.rule.name === "OrderedListElem") {
+            // If the next item is a an ordered list element
+            if (openItems[0] === "OrderedListElem") {
+              // If we are in the middle of an ordered list
+              outputs += rule.rule.callback(rule, { openItems: openItems });
+            } else {
+              // We are just starting an ordered list
+              openItems.push("OrderedListElem");
+              outputs += "<ol>\n";
+              outputs += rule.rule.callback(rule, { openItems: openItems });
+            }
+          } else if (rule.rule.name === "UnorderedListElem") {
+            // If the next item is a an un-ordered list element
+            if (openItems[0] === "UnorderedListElem") {
+              // If we are in the middle of an un-ordered list
+              outputs += rule.rule.callback(rule, { openItems: openItems });
+            } else {
+              // We are just starting an un-ordered list
+              openItems.push("UnorderedListElem");
+              outputs += "<ul>\n";
+              outputs += rule.rule.callback(rule, { openItems: openItems });
+            }
+          } else {
+            // We are in the middle of neither
+
+            // Check if we have possibly switched off one to the other
+            switch (openItems.pop()) {
+              case "UnorderedListElem":
+                outputs += "</ul>";
+                outputs += rule.rule.callback(rule, { openItems: openItems });
+                break;
+              case "OrderedListElem":
+                outputs += "</ol>";
+                outputs += rule.rule.callback(rule, { openItems: openItems });
+                break;
+
+              default:
+                outputs += rule.rule.callback(rule, { openItems: openItems });
+                break;
+            }
+          }
+        } else {
+          throw new Error(
+            `ERROR: Prog should never encounter a raw token, but did: '${rule.rule.name}'`
+          );
+        }
+      }
+      return outputs;
+    },
   },
 ];
 
@@ -187,4 +388,9 @@ const progRule = gram.find((val) => val.name === "Prog");
 
 const parseOut = progRule ? Parser(1, output_tokens, gram, progRule) : "";
 
-console.log(JSON.stringify(parseOut));
+if (parseOut && parseOut.rule.type === "Rule") {
+  console.log("SUCCESS");
+  const outText = parseOut.rule.callback(parseOut, { openItems: [] });
+  fs.writeFile("./testoutput.html", outText, () => {});
+  // console.log(outText);
+}
