@@ -77,7 +77,9 @@ const token_desc_list = [
         precedence: 10,
     },
 ];
-const test_str = "# Testing\n### This is a little header\nand we can **have baby** text under it\nmore *text* can be adding, how it will be parsed\nI am not quite sure.\n\nLet us see _how_ this works, __this would be bold I think__.\n Now we see that # hashes midway should be preserved.\n> Can we do blockquotes?\n>> How about nested ones\n1. This is some stuff\n2. More stuff\n3. Again another list item\n- Now lets try for an unordered list\n- Can we do it?\n\t- Indented list?!\n\t- Im not sure.\nNow, lets try code inside here `hello my code stuff`\n---\nA horizontal rule might be nice\nHere is a link [Duck Duck Go](https://duckduckgo.com).\n";
+const test_str = "# Testing\n### This is a little header\nand we can **have baby** text under it\nmore *text* can be adding, how it will be parsed\nI am not quite sure.\n\nLet us see _how_ this works, __this would be bold I think__.\n Now we see that # hashes midway should be preserved.\n> Can we do blockquotes?\n>> How about nested ones\n";
+// "1. This is **some stuff**\n2. More stuff\n3. Again another list item";
+// "\n- Now lets try for an unordered list\n- Can we do it?\n\t- Indented list?!\n\t- Im not sure.\nNow, lets try code inside here `hello my code stuff`\n---\nA horizontal rule might be nice\nHere is a link [Duck Duck Go](https://duckduckgo.com).\n";
 const output_tokens = (0, index_1.Tokenize)(test_str, token_desc_list);
 const gram = [
     {
@@ -142,7 +144,7 @@ const gram = [
         type: "Rule",
         name: "BlockQuote",
         // TODO: Add better nesting handling
-        pattern: [["GT", "Text"]],
+        pattern: [["GT", "BreakFreeText"]],
         callback: (r, context) => {
             const subProgRule = r.match[1].rule;
             if (subProgRule.type === "Rule") {
@@ -154,28 +156,28 @@ const gram = [
     {
         type: "Rule",
         name: "OrderedListElem",
-        pattern: [["NUM_DOT", "STR", "BR"]],
-        callback: (r) => {
-            const strToken = r.match[1];
-            if (strToken.rule.type === "Token") {
-                return `<li>${strToken.rule.match}</li>`;
+        pattern: [["NUM_DOT", "BreakFreeText", "BR"]],
+        callback: (r, context) => {
+            const textToken = r.match[1];
+            if (textToken.rule.type === "Rule") {
+                return `<li>${textToken.rule.callback(textToken, context)}</li>`;
             }
             else {
-                throw new Error("OrderedListElem: Expecting a STR, when we instead got an extended rule.");
+                throw new Error("OrderedListElem: Expecting a BreakFreeText, when we instead got a Token.");
             }
         },
     },
     {
         type: "Rule",
         name: "UnorderedListElem",
-        pattern: [["DASH", "STR", "BR"]],
-        callback: (r) => {
-            const strToken = r.match[1];
-            if (strToken.rule.type === "Token") {
-                return `<li>${strToken.rule.match}</li>`;
+        pattern: [["DASH", "BreakFreeText", "BR"]],
+        callback: (r, context) => {
+            const textToken = r.match[1];
+            if (textToken.rule.type === "Rule") {
+                return `<li>${textToken.rule.callback(textToken, context)}</li>`;
             }
             else {
-                throw new Error("UnorderedListElem: Expecting a STR, when we instead got an extended rule.");
+                throw new Error("UnorderedListElem: Expecting a BreakFreeText, when we instead got a Token.");
             }
         },
     },
@@ -251,16 +253,40 @@ const gram = [
     },
     {
         type: "Rule",
-        name: "Text",
+        name: "BreakFreeText",
         pattern: [
-            ["STR", "Text"],
-            ["BR", "Text"],
-            ["Italic", "Text"],
-            ["Bold", "Text"],
-            ["Code", "Text"],
-            ["Link", "Text"],
+            ["STR", "BreakFreeText"],
+            ["Italic", "BreakFreeText"],
+            ["Bold", "BreakFreeText"],
+            ["Code", "BreakFreeText"],
+            ["Link", "BreakFreeText"],
             ["EMPTY"],
         ],
+        callback: (r, context) => {
+            let outputs = "";
+            for (const rule of r.match) {
+                if (rule.rule.type === "Token") {
+                    // We are a token, we should be a STR
+                    if (rule.rule.name === "STR") {
+                        outputs += rule.rule.match;
+                        continue;
+                    }
+                    else {
+                        throw new Error(`We should only be a STR, but instead were a '${rule.rule.name}'`);
+                    }
+                }
+                else if (rule.rule.type === "Rule") {
+                    const currentOutput = rule.rule.callback(rule, context);
+                    outputs += currentOutput;
+                }
+            }
+            return outputs;
+        },
+    },
+    {
+        type: "Rule",
+        name: "Text",
+        pattern: [["BR", "Text"], ["BreakFreeText", "Text"], ["EMPTY"]],
         callback: (r, context) => {
             let outputs = "";
             let previousBR = false;
@@ -282,12 +308,8 @@ const gram = [
                             continue;
                         }
                     }
-                    else if (rule.rule.name === "STR") {
-                        outputs += rule.rule.match;
-                        continue;
-                    }
                     else {
-                        throw new Error(`We should only be a STR, or BR, but instead were a '${rule.rule.name}'`);
+                        throw new Error(`We should only be a BR, but instead were a '${rule.rule.name}'`);
                     }
                 }
                 else if (rule.rule.type === "Rule") {
@@ -328,6 +350,11 @@ const gram = [
                             outputs += rule.rule.callback(rule, { openItems: openItems });
                         }
                         else {
+                            if (openItems[0] === "UnorderedListElem") {
+                                // The other one was open!
+                                outputs += "</ul>";
+                                openItems.pop();
+                            }
                             // We are just starting an ordered list
                             openItems.push("OrderedListElem");
                             outputs += "<ol>\n";
@@ -341,21 +368,32 @@ const gram = [
                             outputs += rule.rule.callback(rule, { openItems: openItems });
                         }
                         else {
+                            if (openItems[0] === "OrderedListElem") {
+                                // The other one was open!
+                                outputs += "</ol>";
+                                openItems.pop();
+                            }
                             // We are just starting an un-ordered list
                             openItems.push("UnorderedListElem");
                             outputs += "<ul>\n";
                             outputs += rule.rule.callback(rule, { openItems: openItems });
                         }
                     }
+                    else if (rule.rule.name === "Prog") {
+                        // We could be in between
+                        outputs += rule.rule.callback(rule, { openItems: openItems });
+                    }
                     else {
                         // We are in the middle of neither
                         // Check if we have possibly switched off one to the other
-                        switch (openItems.pop()) {
+                        switch (openItems[0]) {
                             case "UnorderedListElem":
+                                openItems.pop();
                                 outputs += "</ul>";
                                 outputs += rule.rule.callback(rule, { openItems: openItems });
                                 break;
                             case "OrderedListElem":
+                                openItems.pop();
                                 outputs += "</ol>";
                                 outputs += rule.rule.callback(rule, { openItems: openItems });
                                 break;
