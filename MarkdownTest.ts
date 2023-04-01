@@ -1,5 +1,6 @@
 import { Parser, Tokenize } from "ts-parso/index";
 import fs from "fs";
+import katex from "katex";
 
 const token_desc_list: TokenDescription[] = [
   {
@@ -73,7 +74,7 @@ const token_desc_list: TokenDescription[] = [
     precedence: 0,
   },
   {
-    name: "LATEX_SNIP",
+    name: "KATEX",
     description: /\$[^\$]+\$/,
     precedence: 3,
   },
@@ -85,7 +86,7 @@ const token_desc_list: TokenDescription[] = [
 ];
 
 const test_str =
-  "# Testing\n### This is a little header\nand we can **have baby** text under it\nmore *text* can be adding, how it will be parsed\nI am not quite sure.\n\nLet us see _how_ this works, __this would be bold I think__.\n Now we see that # hashes midway should be preserved.\n> Can we do blockquotes?\n>> How about nested ones\n1. This is **some stuff**\n2. More stuff\n3. Again another list item\n- Now lets try for an unordered list\n- Can we do it?\n\t- Indented list?!\n\t- Im not sure.\nNow, lets try code inside here `hello my code stuff`\n---\nA horizontal rule might be nice\nHere is a link [Duck Duck Go](https://duckduckgo.com).\n$1 + 1 = 2$\n";
+  "# Testing\n### This is a little header\nand we can **have baby** text under it\nmore *text* can be adding, how it will be parsed\nI am not quite sure.\n\nLet us see _how_ this works, __this would be bold I think__.\n Now we see that # hashes midway should be preserved.\n> Can we do blockquotes?\n>> How about nested ones\n1. This is **some stuff**\n2. More stuff\n3. Again another list item\n- Now lets try for an unordered list\n- Can we do it?\n\t- Indented list?!\n\t- Im not sure.\nNow, lets try code inside here `hello my code stuff`\n---\nA horizontal rule might be nice\nHere is a link [Duck Duck Go](https://duckduckgo.com).\n$x + y = y + x \\implies \\text{Commutativity holds}$\n";
 const output_tokens = Tokenize(test_str, token_desc_list);
 
 const gram: Grammar<string> = [
@@ -279,6 +280,11 @@ const gram: Grammar<string> = [
     type: "Rule",
     name: "BreakFreeText",
     pattern: [
+      ["ESCAPE_SEQ", "STAR", "BreakFreeText"],
+      ["ESCAPE_SEQ", "HASH", "BreakFreeText"],
+      ["ESCAPE_SEQ", "UNDER", "BreakFreeText"],
+      ["ESCAPE_SEQ", "BACKTICK", "BreakFreeText"],
+      ["KATEX", "BreakFreeText"],
       ["STR", "BreakFreeText"],
       ["Italic", "BreakFreeText"],
       ["Bold", "BreakFreeText"],
@@ -290,8 +296,19 @@ const gram: Grammar<string> = [
       let outputs = "";
       for (const rule of r.match) {
         if (rule.rule.type === "Token") {
-          // We are a token, we should be a STR
-          if (rule.rule.name === "STR") {
+          // We are a token, we should be a STR or ESCAPED
+          if (rule.rule.name === "ESCAPE_SEQ") {
+            if (r.match[1].rule.type === "Token") {
+              // Should always hold
+              return r.match[1].rule.match;
+            }
+          } else if (rule.rule.name === "KATEX") {
+            const katexSlice = rule.rule.match;
+            outputs += katex.renderToString(
+              katexSlice.slice(1, katexSlice.length - 1),
+              { output: "mathml" }
+            );
+          } else if (rule.rule.name === "STR") {
             outputs += rule.rule.match;
             continue;
           } else {
@@ -311,10 +328,11 @@ const gram: Grammar<string> = [
     type: "Rule",
     name: "NonEmptyBreakFreeText",
     pattern: [
-      ["ESCAPE_SEQ", "STAR"],
-      ["ESCAPE_SEQ", "HASH"],
-      ["ESCAPE_SEQ", "UNDER"],
-      ["ESCAPE_SEQ", "BACKTICK"],
+      ["ESCAPE_SEQ", "STAR", "BreakFreeText"],
+      ["ESCAPE_SEQ", "HASH", "BreakFreeText"],
+      ["ESCAPE_SEQ", "UNDER", "BreakFreeText"],
+      ["ESCAPE_SEQ", "BACKTICK", "BreakFreeText"],
+      ["KATEX", "BreakFreeText"],
       ["STR", "BreakFreeText"],
       ["Italic", "BreakFreeText"],
       ["Bold", "BreakFreeText"],
@@ -331,8 +349,13 @@ const gram: Grammar<string> = [
               // Should always hold
               return r.match[1].rule.match;
             }
-          }
-          if (rule.rule.name === "STR") {
+          } else if (rule.rule.name === "KATEX") {
+            const katexSlice = rule.rule.match;
+            outputs += katex.renderToString(
+              katexSlice.slice(1, katexSlice.length - 1),
+              { output: "mathml" }
+            );
+          } else if (rule.rule.name === "STR") {
             outputs += rule.rule.match;
             continue;
           } else {
@@ -515,9 +538,9 @@ const gram: Grammar<string> = [
 ];
 
 const progRule = gram.find((val) => val.name === "Prog");
-
+console.profile();
 const parseOut = progRule ? Parser(3, output_tokens, gram, progRule) : "";
-
+console.profileEnd();
 if (parseOut && parseOut.rule.type === "Rule") {
   console.log("SUCCESS");
   const outText = parseOut.rule.callback(parseOut, { openItems: [] });

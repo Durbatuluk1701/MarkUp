@@ -22,6 +22,7 @@
   },
   "homepage": "https://github.com/Durbatuluk1701/MarkUp#readme",
   "devDependencies": {
+    "@types/katex": "^0.16.0",
     "@types/node": "^18.15.11"
   }
 }
