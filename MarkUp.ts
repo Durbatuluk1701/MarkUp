@@ -369,7 +369,7 @@ const gram: Grammar<string> = [
     callback: (r: RuleMatch<string>, context) => {
       let outputs = "";
       const openItems: string[] = context.openItems;
-      let previousBR = false;
+      let previousBR = context.previousBR;
       for (const rule of r.match) {
         if (rule.rule.type === "Rule") {
           // const ruleOutput =
@@ -377,7 +377,10 @@ const gram: Grammar<string> = [
             // If the next item is a an ordered list element
             if (openItems[0] === "OrderedListElem") {
               // If we are in the middle of an ordered list
-              outputs += rule.rule.callback(rule, { openItems: openItems });
+              outputs += rule.rule.callback(rule, {
+                openItems: openItems,
+                previousBR: previousBR,
+              });
             } else {
               if (openItems[0] === "UnorderedListElem") {
                 // The other one was open!
@@ -387,13 +390,19 @@ const gram: Grammar<string> = [
               // We are just starting an ordered list
               openItems.push("OrderedListElem");
               outputs += "<ol>\n";
-              outputs += rule.rule.callback(rule, { openItems: openItems });
+              outputs += rule.rule.callback(rule, {
+                openItems: openItems,
+                previousBR: previousBR,
+              });
             }
           } else if (rule.rule.name === "UnorderedListElem") {
             // If the next item is a an un-ordered list element
             if (openItems[0] === "UnorderedListElem") {
               // If we are in the middle of an un-ordered list
-              outputs += rule.rule.callback(rule, { openItems: openItems });
+              outputs += rule.rule.callback(rule, {
+                openItems: openItems,
+                previousBR: previousBR,
+              });
             } else {
               if (openItems[0] === "OrderedListElem") {
                 // The other one was open!
@@ -403,11 +412,17 @@ const gram: Grammar<string> = [
               // We are just starting an un-ordered list
               openItems.push("UnorderedListElem");
               outputs += "<ul>\n";
-              outputs += rule.rule.callback(rule, { openItems: openItems });
+              outputs += rule.rule.callback(rule, {
+                openItems: openItems,
+                previousBR: previousBR,
+              });
             }
           } else if (rule.rule.name === "Prog") {
             // We could be in between
-            outputs += rule.rule.callback(rule, { openItems: openItems });
+            outputs += rule.rule.callback(rule, {
+              openItems: openItems,
+              previousBR: previousBR,
+            });
           } else {
             // We are in the middle of neither
 
@@ -416,16 +431,25 @@ const gram: Grammar<string> = [
               case "UnorderedListElem":
                 openItems.pop();
                 outputs += "</ul>";
-                outputs += rule.rule.callback(rule, { openItems: openItems });
+                outputs += rule.rule.callback(rule, {
+                  openItems: openItems,
+                  previousBR: previousBR,
+                });
                 break;
               case "OrderedListElem":
                 openItems.pop();
                 outputs += "</ol>";
-                outputs += rule.rule.callback(rule, { openItems: openItems });
+                outputs += rule.rule.callback(rule, {
+                  openItems: openItems,
+                  previousBR: previousBR,
+                });
                 break;
 
               default:
-                outputs += rule.rule.callback(rule, { openItems: openItems });
+                outputs += rule.rule.callback(rule, {
+                  openItems: openItems,
+                  previousBR: previousBR,
+                });
                 break;
             }
           }
@@ -439,7 +463,6 @@ const gram: Grammar<string> = [
           } else {
             // We have not seen a previous BR, so set flag
             previousBR = true;
-            outputs += "\n";
             continue;
           }
         } else {
