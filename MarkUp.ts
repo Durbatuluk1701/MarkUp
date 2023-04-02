@@ -69,13 +69,18 @@ const token_desc_list: TokenDescription[] = [
   },
   {
     name: "STR",
-    description: /[^*_`\n\[\]\(\)\\]+/,
+    description: /[^*_`\n\$\[\]\(\)\\]+/,
     precedence: 0,
   },
   {
     name: "KATEX",
     description: /\$[^\$]+\$/,
     precedence: 3,
+  },
+  {
+    name: "ESCAPE_DOLLAR",
+    description: /\\\$/,
+    precedence: 15,
   },
   {
     name: "BR",
@@ -279,6 +284,7 @@ const gram: Grammar<string> = [
       ["ESCAPE_SEQ", "HASH"],
       ["ESCAPE_SEQ", "UNDER"],
       ["ESCAPE_SEQ", "BACKTICK"],
+      ["ESCAPE_DOLLAR"],
       ["KATEX"],
       ["STR"],
       ["Italic"],
@@ -292,7 +298,9 @@ const gram: Grammar<string> = [
       for (const rule of r.match) {
         if (rule.rule.type === "Token") {
           // We are a token, we should be a STR or ESCAPED
-          if (rule.rule.name === "ESCAPE_SEQ") {
+          if (rule.rule.name === "ESCAPE_DOLLAR") {
+            return "$";
+          } else if (rule.rule.name === "ESCAPE_SEQ") {
             if (r.match[1].rule.type === "Token") {
               // Should always hold
               return r.match[1].rule.match;

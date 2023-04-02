@@ -74,13 +74,18 @@ const token_desc_list = [
     },
     {
         name: "STR",
-        description: /[^*_`\n\[\]\(\)\\]+/,
+        description: /[^*_`\n\$\[\]\(\)\\]+/,
         precedence: 0,
     },
     {
         name: "KATEX",
         description: /\$[^\$]+\$/,
         precedence: 3,
+    },
+    {
+        name: "ESCAPE_DOLLAR",
+        description: /\\\$/,
+        precedence: 15,
     },
     {
         name: "BR",
@@ -269,6 +274,7 @@ const gram = [
             ["ESCAPE_SEQ", "HASH"],
             ["ESCAPE_SEQ", "UNDER"],
             ["ESCAPE_SEQ", "BACKTICK"],
+            ["ESCAPE_DOLLAR"],
             ["KATEX"],
             ["STR"],
             ["Italic"],
@@ -282,7 +288,10 @@ const gram = [
             for (const rule of r.match) {
                 if (rule.rule.type === "Token") {
                     // We are a token, we should be a STR or ESCAPED
-                    if (rule.rule.name === "ESCAPE_SEQ") {
+                    if (rule.rule.name === "ESCAPE_DOLLAR") {
+                        return "$";
+                    }
+                    else if (rule.rule.name === "ESCAPE_SEQ") {
                         if (r.match[1].rule.type === "Token") {
                             // Should always hold
                             return r.match[1].rule.match;
@@ -358,7 +367,7 @@ const gram = [
         callback: (r, context) => {
             let outputs = "";
             const openItems = context.openItems;
-            let previousBR = false;
+            let previousBR = context.previousBR;
             for (const rule of r.match) {
                 if (rule.rule.type === "Rule") {
                     // const ruleOutput =
@@ -366,7 +375,10 @@ const gram = [
                         // If the next item is a an ordered list element
                         if (openItems[0] === "OrderedListElem") {
                             // If we are in the middle of an ordered list
-                            outputs += rule.rule.callback(rule, { openItems: openItems });
+                            outputs += rule.rule.callback(rule, {
+                                openItems: openItems,
+                                previousBR: previousBR,
+                            });
                         }
                         else {
                             if (openItems[0] === "UnorderedListElem") {
@@ -377,14 +389,20 @@ const gram = [
                             // We are just starting an ordered list
                             openItems.push("OrderedListElem");
                             outputs += "<ol>\n";
-                            outputs += rule.rule.callback(rule, { openItems: openItems });
+                            outputs += rule.rule.callback(rule, {
+                                openItems: openItems,
+                                previousBR: previousBR,
+                            });
                         }
                     }
                     else if (rule.rule.name === "UnorderedListElem") {
                         // If the next item is a an un-ordered list element
                         if (openItems[0] === "UnorderedListElem") {
                             // If we are in the middle of an un-ordered list
-                            outputs += rule.rule.callback(rule, { openItems: openItems });
+                            outputs += rule.rule.callback(rule, {
+                                openItems: openItems,
+                                previousBR: previousBR,
+                            });
                         }
                         else {
                             if (openItems[0] === "OrderedListElem") {
@@ -395,12 +413,18 @@ const gram = [
                             // We are just starting an un-ordered list
                             openItems.push("UnorderedListElem");
                             outputs += "<ul>\n";
-                            outputs += rule.rule.callback(rule, { openItems: openItems });
+                            outputs += rule.rule.callback(rule, {
+                                openItems: openItems,
+                                previousBR: previousBR,
+                            });
                         }
                     }
                     else if (rule.rule.name === "Prog") {
                         // We could be in between
-                        outputs += rule.rule.callback(rule, { openItems: openItems });
+                        outputs += rule.rule.callback(rule, {
+                            openItems: openItems,
+                            previousBR: previousBR,
+                        });
                     }
                     else {
                         // We are in the middle of neither
@@ -409,15 +433,24 @@ const gram = [
                             case "UnorderedListElem":
                                 openItems.pop();
                                 outputs += "</ul>";
-                                outputs += rule.rule.callback(rule, { openItems: openItems });
+                                outputs += rule.rule.callback(rule, {
+                                    openItems: openItems,
+                                    previousBR: previousBR,
+                                });
                                 break;
                             case "OrderedListElem":
                                 openItems.pop();
                                 outputs += "</ol>";
-                                outputs += rule.rule.callback(rule, { openItems: openItems });
+                                outputs += rule.rule.callback(rule, {
+                                    openItems: openItems,
+                                    previousBR: previousBR,
+                                });
                                 break;
                             default:
-                                outputs += rule.rule.callback(rule, { openItems: openItems });
+                                outputs += rule.rule.callback(rule, {
+                                    openItems: openItems,
+                                    previousBR: previousBR,
+                                });
                                 break;
                         }
                     }
@@ -433,7 +466,6 @@ const gram = [
                     else {
                         // We have not seen a previous BR, so set flag
                         previousBR = true;
-                        outputs += "\n";
                         continue;
                     }
                 }
