@@ -88,7 +88,7 @@ const token_desc_list = [
         precedence: 10,
     },
 ];
-const test_str = "# Testing\n### This is a little header\nand we can **have baby** text under it\nmore *text* can be adding, how it will be parsed\nI am not quite sure.\n\nLet us see _how_ this works, __this would be bold I think__.\n Now we see that # hashes midway should be preserved.\n> Can we do blockquotes?\n>> How about nested ones\n1. This is **some stuff**\n2. More stuff\n3. Again another list item\n- Now lets try for an unordered list\n- Can we do it?\n\t- Indented list?!\n\t- Im not sure.\nNow, lets try code inside here `hello my code stuff`\n---\nA horizontal rule might be nice\nHere is a link [Duck Duck Go](https://duckduckgo.com).\n$x + y = y + x \\implies \\text{Commutativity holds}$\n";
+const test_str = "# Testing\n### This is a little header\nand we can **have baby** text under it\nmore *text* can be adding, how it will be parsed\nI am not quite sure.\n\nLet us see _how_ this works, __this would be bold I think__.\nNow we see that # hashes midway should be preserved.\n> Can we do blockquotes?\n>> How about nested ones\n1. This is **some stuff**\n2. More stuff\n3. Again another list item\n- Now lets try for an unordered list\n- Can we do it?\n\t- Indented list?!\n\t- Im not sure.\nNow, lets try code inside here `hello my code stuff`\n---\nA horizontal rule might be nice\nHere is a link [Duck Duck Go](https://duckduckgo.com).\n$x + y = y + x \\implies \\text{Commutativity holds}$\n";
 const output_tokens = (0, index_1.Tokenize)(test_str, token_desc_list);
 const gram = [
     {
@@ -154,7 +154,7 @@ const gram = [
         name: "BlockQuote",
         // TODO: Add better nesting handling
         pattern: [
-            ["GT", "NonEmptyBreakFreeText", "BR"],
+            ["GT", "BreakFreeText", "BR"],
             ["GT", "BlockQuote"],
         ],
         callback: (r, context) => {
@@ -168,28 +168,28 @@ const gram = [
     {
         type: "Rule",
         name: "OrderedListElem",
-        pattern: [["NUM_DOT", "NonEmptyBreakFreeText", "BR"]],
+        pattern: [["NUM_DOT", "Text", "BR"]],
         callback: (r, context) => {
             const textToken = r.match[1];
             if (textToken.rule.type === "Rule") {
                 return `<li>${textToken.rule.callback(textToken, context)}</li>`;
             }
             else {
-                throw new Error("OrderedListElem: Expecting a NonEmptyBreakFreeText, when we instead got a Token.");
+                throw new Error("OrderedListElem: Expecting a Text, when we instead got a Token.");
             }
         },
     },
     {
         type: "Rule",
         name: "UnorderedListElem",
-        pattern: [["DASH", "NonEmptyBreakFreeText", "BR"]],
+        pattern: [["DASH", "Text", "BR"]],
         callback: (r, context) => {
             const textToken = r.match[1];
             if (textToken.rule.type === "Rule") {
                 return `<li>${textToken.rule.callback(textToken, context)}</li>`;
             }
             else {
-                throw new Error("UnorderedListElem: Expecting a NonEmptyBreakFreeText, when we instead got a Token.");
+                throw new Error("UnorderedListElem: Expecting a Text, when we instead got a Token.");
             }
         },
     },
@@ -267,17 +267,17 @@ const gram = [
         type: "Rule",
         name: "BreakFreeText",
         pattern: [
-            ["ESCAPE_SEQ", "STAR", "BreakFreeText"],
-            ["ESCAPE_SEQ", "HASH", "BreakFreeText"],
-            ["ESCAPE_SEQ", "UNDER", "BreakFreeText"],
-            ["ESCAPE_SEQ", "BACKTICK", "BreakFreeText"],
-            ["KATEX", "BreakFreeText"],
-            ["STR", "BreakFreeText"],
-            ["Italic", "BreakFreeText"],
-            ["Bold", "BreakFreeText"],
-            ["Code", "BreakFreeText"],
-            ["Link", "BreakFreeText"],
-            ["EMPTY"],
+            ["ESCAPE_SEQ", "STAR"],
+            ["ESCAPE_SEQ", "HASH"],
+            ["ESCAPE_SEQ", "UNDER"],
+            ["ESCAPE_SEQ", "BACKTICK"],
+            ["KATEX"],
+            ["STR"],
+            ["Italic"],
+            ["Bold"],
+            ["Code"],
+            ["Link"],
+            // ["EMPTY"],
         ],
         callback: (r, context) => {
             let outputs = "";
@@ -310,86 +310,64 @@ const gram = [
             return outputs;
         },
     },
-    {
-        type: "Rule",
-        name: "NonEmptyBreakFreeText",
-        pattern: [
-            ["ESCAPE_SEQ", "STAR", "BreakFreeText"],
-            ["ESCAPE_SEQ", "HASH", "BreakFreeText"],
-            ["ESCAPE_SEQ", "UNDER", "BreakFreeText"],
-            ["ESCAPE_SEQ", "BACKTICK", "BreakFreeText"],
-            ["KATEX", "BreakFreeText"],
-            ["STR", "BreakFreeText"],
-            ["Italic", "BreakFreeText"],
-            ["Bold", "BreakFreeText"],
-            ["Code", "BreakFreeText"],
-            ["Link", "BreakFreeText"],
-        ],
-        callback: (r, context) => {
-            let outputs = "";
-            for (const rule of r.match) {
-                if (rule.rule.type === "Token") {
-                    // We are a token, we should be a STR or ESCAPED
-                    if (rule.rule.name === "ESCAPE_SEQ") {
-                        if (r.match[1].rule.type === "Token") {
-                            // Should always hold
-                            return r.match[1].rule.match;
-                        }
-                    }
-                    else if (rule.rule.name === "KATEX") {
-                        const katexSlice = rule.rule.match;
-                        outputs += katex_1.default.renderToString(katexSlice.slice(1, katexSlice.length - 1), { output: "mathml" });
-                    }
-                    else if (rule.rule.name === "STR") {
-                        outputs += rule.rule.match;
-                        continue;
-                    }
-                    else {
-                        throw new Error(`We should only be a STR, but instead were a '${rule.rule.name}'`);
-                    }
-                }
-                else if (rule.rule.type === "Rule") {
-                    const currentOutput = rule.rule.callback(rule, context);
-                    outputs += currentOutput;
-                }
-            }
-            return outputs;
-        },
-    },
+    // {
+    //   type: "Rule",
+    //   name: "NonEmptyBreakFreeText",
+    //   pattern: [
+    //     ["ESCAPE_SEQ", "STAR", "BreakFreeText"],
+    //     ["ESCAPE_SEQ", "HASH", "BreakFreeText"],
+    //     ["ESCAPE_SEQ", "UNDER", "BreakFreeText"],
+    //     ["ESCAPE_SEQ", "BACKTICK", "BreakFreeText"],
+    //     ["KATEX", "BreakFreeText"],
+    //     ["STR", "BreakFreeText"],
+    //     ["Italic", "BreakFreeText"],
+    //     ["Bold", "BreakFreeText"],
+    //     ["Code", "BreakFreeText"],
+    //     ["Link", "BreakFreeText"],
+    //   ],
+    //   callback: (r: RuleMatch<string>, context) => {
+    //     let outputs = "";
+    //     for (const rule of r.match) {
+    //       if (rule.rule.type === "Token") {
+    //         // We are a token, we should be a STR or ESCAPED
+    //         if (rule.rule.name === "ESCAPE_SEQ") {
+    //           if (r.match[1].rule.type === "Token") {
+    //             // Should always hold
+    //             return r.match[1].rule.match;
+    //           }
+    //         } else if (rule.rule.name === "KATEX") {
+    //           const katexSlice = rule.rule.match;
+    //           outputs += katex.renderToString(
+    //             katexSlice.slice(1, katexSlice.length - 1),
+    //             { output: "mathml" }
+    //           );
+    //         } else if (rule.rule.name === "STR") {
+    //           outputs += rule.rule.match;
+    //           continue;
+    //         } else {
+    //           throw new Error(
+    //             `We should only be a STR, but instead were a '${rule.rule.name}'`
+    //           );
+    //         }
+    //       } else if (rule.rule.type === "Rule") {
+    //         const currentOutput = rule.rule.callback(rule, context);
+    //         outputs += currentOutput;
+    //       }
+    //     }
+    //     return outputs;
+    //   },
+    // },
     {
         type: "Rule",
         name: "Text",
-        pattern: [["BR", "Text"], ["BreakFreeText", "Text"], ["EMPTY"]],
+        pattern: [["BreakFreeText", "Text"], ["EMPTY"]],
         callback: (r, context) => {
             let outputs = "";
-            let previousBR = false;
             for (const rule of r.match) {
-                if (rule.rule.type === "Token") {
-                    // We are a token, so STR or BR
-                    if (rule.rule.name === "BR") {
-                        // We are a BR
-                        if (previousBR === true) {
-                            // Add a break
-                            outputs += "<br>";
-                            previousBR = false;
-                            continue;
-                        }
-                        else {
-                            // We have not seen a previous BR, so set flag
-                            previousBR = true;
-                            outputs += "\n";
-                            continue;
-                        }
-                    }
-                    else {
-                        throw new Error(`We should only be a BR, but instead were a '${rule.rule.name}'`);
-                    }
-                }
-                else if (rule.rule.type === "Rule") {
+                if (rule.rule.type === "Rule") {
                     const currentOutput = rule.rule.callback(rule, context);
                     outputs += currentOutput;
                 }
-                previousBR = false;
             }
             return outputs;
         },
@@ -397,40 +375,14 @@ const gram = [
     {
         type: "Rule",
         name: "NonEmptyText",
-        pattern: [
-            ["BR", "Text"],
-            ["NonEmptyBreakFreeText", "Text"],
-        ],
+        pattern: [["BreakFreeText", "Text"]],
         callback: (r, context) => {
             let outputs = "";
-            let previousBR = false;
             for (const rule of r.match) {
-                if (rule.rule.type === "Token") {
-                    // We are a token, so STR or BR
-                    if (rule.rule.name === "BR") {
-                        // We are a BR
-                        if (previousBR === true) {
-                            // Add a break
-                            outputs += "<br>";
-                            previousBR = false;
-                            continue;
-                        }
-                        else {
-                            // We have not seen a previous BR, so set flag
-                            previousBR = true;
-                            outputs += "\n";
-                            continue;
-                        }
-                    }
-                    else {
-                        throw new Error(`We should only be a BR, but instead were a '${rule.rule.name}'`);
-                    }
-                }
-                else if (rule.rule.type === "Rule") {
+                if (rule.rule.type === "Rule") {
                     const currentOutput = rule.rule.callback(rule, context);
                     outputs += currentOutput;
                 }
-                previousBR = false;
             }
             return outputs;
         },
@@ -448,12 +400,14 @@ const gram = [
             ["OrderedListElem", "Prog"],
             ["UnorderedListElem", "Prog"],
             ["NonEmptyText", "Prog"],
+            ["BR", "Prog"],
             ["EMPTY"], // IMPORTANT THAT THIS BE HERE
             // TODO: Make more flexible so Empty need not be the last rule
         ],
         callback: (r, context) => {
             let outputs = "";
             const openItems = context.openItems;
+            let previousBR = false;
             for (const rule of r.match) {
                 if (rule.rule.type === "Rule") {
                     // const ruleOutput =
@@ -517,6 +471,21 @@ const gram = [
                         }
                     }
                 }
+                else if (rule.rule.type === "Token" && rule.rule.name === "BR") {
+                    // We are a BR
+                    if (previousBR === true) {
+                        // Add a break
+                        outputs += "<br>";
+                        previousBR = false;
+                        continue;
+                    }
+                    else {
+                        // We have not seen a previous BR, so set flag
+                        previousBR = true;
+                        outputs += "\n";
+                        continue;
+                    }
+                }
                 else {
                     throw new Error(`ERROR: Prog should never encounter a raw token, but did: '${rule.rule.name}'`);
                 }
@@ -526,9 +495,11 @@ const gram = [
     },
 ];
 const progRule = gram.find((val) => val.name === "Prog");
-console.profile();
+// console.profile();
+console.time("parser");
 const parseOut = progRule ? (0, index_1.Parser)(3, output_tokens, gram, progRule) : "";
-console.profileEnd();
+console.timeEnd("parser");
+// console.profileEnd();
 if (parseOut && parseOut.rule.type === "Rule") {
     console.log("SUCCESS");
     const outText = parseOut.rule.callback(parseOut, { openItems: [] });
