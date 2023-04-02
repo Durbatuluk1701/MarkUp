@@ -1,5 +1,4 @@
 import { Parser, Tokenize } from "ts-parso/index";
-import fs from "fs";
 import katex from "katex";
 
 const token_desc_list: TokenDescription[] = [
@@ -84,10 +83,6 @@ const token_desc_list: TokenDescription[] = [
     precedence: 10,
   },
 ];
-
-const test_str =
-  "# Testing\n### This is a little header\nand we can **have baby** text under it\nmore *text* can be adding, how it will be parsed\nI am not quite sure.\n\nLet us see _how_ this works, __this would be bold I think__.\nNow we see that # hashes midway should be preserved.\n> Can we do blockquotes?\n>> How about nested ones\n1. This is **some stuff**\n2. More stuff\n3. Again another list item\n- Now lets try for an unordered list\n- Can we do it?\n\t- Indented list?!\n\t- Im not sure.\nNow, lets try code inside here `hello my code stuff`\n---\nA horizontal rule might be nice\nHere is a link [Duck Duck Go](https://duckduckgo.com).\n$x + y = y + x \\implies \\text{Commutativity holds}$\n";
-const output_tokens = Tokenize(test_str, token_desc_list);
 
 const gram: Grammar<string> = [
   {
@@ -324,53 +319,6 @@ const gram: Grammar<string> = [
       return outputs;
     },
   },
-  // {
-  //   type: "Rule",
-  //   name: "NonEmptyBreakFreeText",
-  //   pattern: [
-  //     ["ESCAPE_SEQ", "STAR", "BreakFreeText"],
-  //     ["ESCAPE_SEQ", "HASH", "BreakFreeText"],
-  //     ["ESCAPE_SEQ", "UNDER", "BreakFreeText"],
-  //     ["ESCAPE_SEQ", "BACKTICK", "BreakFreeText"],
-  //     ["KATEX", "BreakFreeText"],
-  //     ["STR", "BreakFreeText"],
-  //     ["Italic", "BreakFreeText"],
-  //     ["Bold", "BreakFreeText"],
-  //     ["Code", "BreakFreeText"],
-  //     ["Link", "BreakFreeText"],
-  //   ],
-  //   callback: (r: RuleMatch<string>, context) => {
-  //     let outputs = "";
-  //     for (const rule of r.match) {
-  //       if (rule.rule.type === "Token") {
-  //         // We are a token, we should be a STR or ESCAPED
-  //         if (rule.rule.name === "ESCAPE_SEQ") {
-  //           if (r.match[1].rule.type === "Token") {
-  //             // Should always hold
-  //             return r.match[1].rule.match;
-  //           }
-  //         } else if (rule.rule.name === "KATEX") {
-  //           const katexSlice = rule.rule.match;
-  //           outputs += katex.renderToString(
-  //             katexSlice.slice(1, katexSlice.length - 1),
-  //             { output: "mathml" }
-  //           );
-  //         } else if (rule.rule.name === "STR") {
-  //           outputs += rule.rule.match;
-  //           continue;
-  //         } else {
-  //           throw new Error(
-  //             `We should only be a STR, but instead were a '${rule.rule.name}'`
-  //           );
-  //         }
-  //       } else if (rule.rule.type === "Rule") {
-  //         const currentOutput = rule.rule.callback(rule, context);
-  //         outputs += currentOutput;
-  //       }
-  //     }
-  //     return outputs;
-  //   },
-  // },
   {
     type: "Rule",
     name: "Text",
@@ -505,15 +453,17 @@ const gram: Grammar<string> = [
   },
 ];
 
-const progRule = gram.find((val) => val.name === "Prog");
-// console.profile();
-console.time("parser");
-const parseOut = progRule ? Parser(3, output_tokens, gram, progRule) : "";
-console.timeEnd("parser");
-// console.profileEnd();
-if (parseOut && parseOut.rule.type === "Rule") {
-  console.log("SUCCESS");
-  const outText = parseOut.rule.callback(parseOut, { openItems: [] });
-  fs.writeFile("./testoutput.html", outText, () => {});
-  // console.log(outText);
-}
+export const Interpret = (str: string): string => {
+  const tokens = Tokenize(str, token_desc_list);
+  const progRule = gram.find((val) => val.name === "Prog");
+  if (progRule) {
+    const ruleRes = Parser(4, tokens, gram, progRule);
+    if (ruleRes && ruleRes.rule.type === "Rule") {
+      return ruleRes.rule.callback(ruleRes, { openItems: [] });
+    } else {
+      throw new Error("Return of parser failed");
+    }
+  } else {
+    throw new Error("Could not interpret markup");
+  }
+};
