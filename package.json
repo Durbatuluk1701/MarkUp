@@ -1,6 +1,6 @@
 {
   "name": "markup",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Markdown but Up on the Web",
   "main": "MarkUpInterp.js",
   "dependencies": {
