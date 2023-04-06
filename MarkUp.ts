@@ -28,11 +28,6 @@ const token_desc_list: TokenDescription[] = [
     precedence: 10,
   },
   {
-    name: "BACKTICK",
-    description: /`/,
-    precedence: 13,
-  },
-  {
     name: "NUM_DOT",
     description: /\d+\./,
     precedence: 13,
@@ -71,6 +66,11 @@ const token_desc_list: TokenDescription[] = [
     name: "STR",
     description: /[^*_`\n\$\[\]\(\)\\]+/,
     precedence: 0,
+  },
+  {
+    name: "CODE_BLOCK",
+    description: /\`[^`]+\`/,
+    precedence: 13,
   },
   {
     name: "KATEX",
@@ -223,21 +223,6 @@ const gram: Grammar<string> = [
   },
   {
     type: "Rule",
-    name: "Code",
-    pattern: [["BACKTICK", "STR", "BACKTICK"]],
-    callback: (r: RuleMatch<string>) => {
-      const strToken = r.match[1];
-      if (strToken.type === "Token") {
-        return `<code>${strToken.match}</code>`;
-      } else {
-        throw new Error(
-          "Code: Expecting a STR, when we instead got an extended rule."
-        );
-      }
-    },
-  },
-  {
-    type: "Rule",
     name: "Link",
     pattern: [["LBRACKET", "STR", "RBRACKET", "LPAREN", "STR", "RPAREN"]],
     callback: (r: RuleMatch<string>) => {
@@ -279,12 +264,16 @@ const gram: Grammar<string> = [
       ["ESCAPE_SEQ", "HASH"],
       ["ESCAPE_SEQ", "UNDER"],
       ["ESCAPE_SEQ", "BACKTICK"],
+      ["ESCAPE_SEQ", "LBRACKET"],
+      ["ESCAPE_SEQ", "RBRACKET"],
+      ["ESCAPE_SEQ", "LPAREN"],
+      ["ESCAPE_SEQ", "RPAREN"],
       ["ESCAPE_DOLLAR"],
       ["KATEX"],
       ["STR"],
       ["Italic"],
       ["Bold"],
-      ["Code"],
+      ["CODE_BLOCK"],
       ["Link"],
       // ["EMPTY"],
     ],
@@ -306,6 +295,13 @@ const gram: Grammar<string> = [
               katexSlice.slice(1, katexSlice.length - 1),
               { output: "mathml" }
             );
+          } else if (rule.name === "CODE_BLOCK") {
+            const codeSlice = rule.match.slice(1, rule.match.length - 1);
+            outputs += `<code>${codeSlice}</code>`;
+            // katex.renderToString(
+            //   katexSlice.slice(1, katexSlice.length - 1),
+            //   { output: "mathml" }
+            // );
           } else if (rule.name === "STR") {
             outputs += rule.match;
             continue;
