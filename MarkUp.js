@@ -270,6 +270,7 @@ const gram = [
         name: "BreakFreeText",
         pattern: [
             ["ESCAPE_SEQ", "STAR"],
+            ["ESCAPE_SEQ", "ESCAPE_SEQ"],
             ["ESCAPE_SEQ", "HASH"],
             ["ESCAPE_SEQ", "UNDER"],
             ["ESCAPE_SEQ", "BACKTICK"],
