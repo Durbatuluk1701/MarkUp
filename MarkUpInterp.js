@@ -13,7 +13,7 @@ const toggleDisplay = () => {
     if (interpretShown === true) {
         if (textBoxElem.value) {
             const output = (0, MarkUp_1.Interpret)(textBoxElem.value + "\n\n");
-            rootElem.innerHTML = output;
+            rootElem.appendChild(output);
         }
     }
     else {

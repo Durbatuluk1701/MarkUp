@@ -99,7 +99,7 @@ const gram = [
         name: "HorizontalRule",
         pattern: [["DASH", "DASH", "DASH"]],
         callback: (r) => {
-            return "<hr>";
+            return document.createElement("hr");
         },
     },
     {
@@ -109,7 +109,10 @@ const gram = [
         callback: (r) => {
             const strToken = r.match[1];
             if (strToken.type === "Token") {
-                return `<h1>${strToken.match}</h1>`;
+                const ret_elem = document.createElement("h1");
+                ret_elem.textContent = strToken.match;
+                return ret_elem;
+                // return `<h1>${strToken.match}</h1>`;
             }
             else {
                 throw new Error("HEAD1: Expecting a STR, when we instead got an extended rule.");
@@ -123,7 +126,10 @@ const gram = [
         callback: (r) => {
             const strToken = r.match[2];
             if (strToken.type === "Token") {
-                return `<h2>${strToken.match}</h2>`;
+                const ret_elem = document.createElement("h2");
+                ret_elem.textContent = strToken.match;
+                return ret_elem;
+                // return `<h2>${strToken.match}</h2>`;
             }
             else {
                 throw new Error("HEAD2: Expecting a STR, when we instead got an extended rule.");
@@ -137,7 +143,10 @@ const gram = [
         callback: (r) => {
             const strToken = r.match[3];
             if (strToken.type === "Token") {
-                return `<h3>${strToken.match}</h3>`;
+                const ret_elem = document.createElement("h3");
+                ret_elem.textContent = strToken.match;
+                return ret_elem;
+                // return `<h3>${strToken.match}</h3>`;
             }
             else {
                 throw new Error("HEAD3: Expecting a STR, when we instead got an extended rule.");
@@ -149,7 +158,8 @@ const gram = [
         name: "Indent",
         pattern: [["TAB"]],
         callback: (r) => {
-            return "";
+            const ret_elem = document.createElement("div");
+            return ret_elem;
         },
     },
     {
@@ -163,7 +173,10 @@ const gram = [
         callback: (r, context) => {
             const subProgRule = r.match[1];
             if (subProgRule.type === "Rule") {
-                return `<blockquote>${subProgRule.callback(context)}</blockquote>`;
+                const ret_elem = document.createElement("blockquote");
+                ret_elem.textContent = `${subProgRule.callback(context)}`;
+                return ret_elem;
+                // return `<blockquote>${subProgRule.callback(context)}</blockquote>`;
             }
             throw new Error("Error in 'BlockQuote', subProg is not a rule");
         },
@@ -175,7 +188,10 @@ const gram = [
         callback: (r, context) => {
             const textToken = r.match[1];
             if (textToken.type === "Rule") {
-                return `<li>${textToken.callback(context)}</li>`;
+                const ret_elem = document.createElement("li");
+                ret_elem.textContent = `${textToken.callback(context)}`;
+                return ret_elem;
+                // return `<li>${textToken.callback(context)}</li>`;
             }
             else {
                 throw new Error("OrderedListElem: Expecting a Text, when we instead got a Token.");
@@ -189,7 +205,10 @@ const gram = [
         callback: (r, context) => {
             const textToken = r.match[1];
             if (textToken.type === "Rule") {
-                return `<li>${textToken.callback(context)}</li>`;
+                const ret_elem = document.createElement("ul");
+                ret_elem.textContent = `${textToken.callback(context)}`;
+                return ret_elem;
+                // return `<li>${textToken.callback(context)}</li>`;
             }
             else {
                 throw new Error("UnorderedListElem: Expecting a Text, when we instead got a Token.");
@@ -212,7 +231,11 @@ const gram = [
         callback: (r) => {
             const strToken = r.match[2];
             if (strToken.type === "Token") {
-                return `<b>${strToken.match}</b>`;
+                // Return a bold element
+                const ret_elem = document.createElement("b");
+                ret_elem.textContent = strToken.match;
+                return ret_elem;
+                // return `<b>${strToken.match}</b>`;
             }
             else {
                 throw new Error("Bold: Expecting a STR, when we instead got an extended rule.");
@@ -227,7 +250,11 @@ const gram = [
             const strNameToken = r.match[1];
             const strHrefToken = r.match[4];
             if (strNameToken.type === "Token" && strHrefToken.type === "Token") {
-                return `<a href="${strHrefToken.match}">${strNameToken.match}</a>`;
+                const ret_elem = document.createElement("a");
+                ret_elem.href = strHrefToken.match;
+                ret_elem.textContent = strNameToken.match;
+                return ret_elem;
+                // return `<a href="${strHrefToken.match}">${strNameToken.match}</a>`;
             }
             else {
                 throw new Error("Link Element: Expecting a STR, when we instead got an extended rule.");
@@ -244,7 +271,10 @@ const gram = [
         callback: (r) => {
             const strToken = r.match[1];
             if (strToken.type === "Token") {
-                return `<em>${strToken.match}</em>`;
+                const ret_elem = document.createElement("em");
+                ret_elem.textContent = strToken.match;
+                return ret_elem;
+                // return `<em>${strToken.match}</em>`;
             }
             else {
                 throw new Error("Italic: Expecting a STR, when we instead got an extended rule.");
@@ -274,33 +304,49 @@ const gram = [
             // ["EMPTY"],
         ],
         callback: (r, context) => {
-            let outputs = "";
+            const ret_anchor = document.createElement("div");
             for (const rule of r.match) {
                 if (rule.type === "Token") {
                     // We are a token, we should be a STR or ESCAPED
                     if (rule.name === "ESCAPE_DOLLAR") {
-                        return "$";
+                        const ret_elem = document.createElement("p");
+                        ret_elem.textContent = "$";
+                        ret_anchor.appendChild(ret_elem);
+                        // return "$";
                     }
                     else if (rule.name === "ESCAPE_SEQ") {
                         if (r.match[1].type === "Token") {
                             // Should always hold
-                            return r.match[1].match;
+                            const ret_elem = document.createElement("p");
+                            ret_elem.textContent = r.match[1].match;
+                            ret_anchor.appendChild(ret_elem);
+                            // return r.match[1].match;
                         }
                     }
                     else if (rule.name === "KATEX") {
                         const katexSlice = rule.match;
-                        outputs += katex_1.default.renderToString(katexSlice.slice(1, katexSlice.length - 1), { output: "mathml" });
+                        console.log(katex_1.default);
+                        console.log(katexSlice);
+                        // @ts-ignore: Unreachable code error
+                        window.katex = katex_1.default;
+                        const katexVal = katexSlice.slice(1, katexSlice.length - 1);
+                        const katex_root_node = document.createElement("div");
+                        katex_1.default.render(katexVal, katex_root_node);
+                        ret_anchor.appendChild(katex_root_node);
+                        console.log(`Rendering Latex for: ${katexVal}`);
+                        console.log(katexVal.length);
                     }
                     else if (rule.name === "CODE_BLOCK") {
-                        const codeSlice = rule.match.slice(1, rule.match.length - 1);
-                        outputs += `<code>${codeSlice}</code>`;
-                        // katex.renderToString(
-                        //   katexSlice.slice(1, katexSlice.length - 1),
-                        //   { output: "mathml" }
-                        // );
+                        const ret_elem = document.createElement("code");
+                        ret_elem.textContent = rule.match.slice(1, rule.match.length - 1);
+                        ret_anchor.appendChild(ret_elem);
+                        // const codeSlice = rule.match.slice(1, rule.match.length - 1);
+                        // outputs += `<code>${codeSlice}</code>`;
                     }
                     else if (rule.name === "STR") {
-                        outputs += rule.match;
+                        const ret_elem = document.createElement("p");
+                        ret_elem.textContent = rule.match;
+                        ret_anchor.appendChild(ret_elem);
                         continue;
                     }
                     else {
@@ -309,10 +355,10 @@ const gram = [
                 }
                 else if (rule.type === "Rule") {
                     const currentOutput = rule.callback(context);
-                    outputs += currentOutput;
+                    ret_anchor.appendChild(currentOutput);
                 }
             }
-            return outputs;
+            return ret_anchor;
         },
     },
     {
@@ -320,14 +366,14 @@ const gram = [
         name: "Text",
         pattern: [["BreakFreeText", "Text"], ["EMPTY"]],
         callback: (r, context) => {
-            let outputs = "";
+            const ret_anchor = document.createElement("div");
             for (const rule of r.match) {
                 if (rule.type === "Rule") {
                     const currentOutput = rule.callback(context);
-                    outputs += currentOutput;
+                    ret_anchor.appendChild(currentOutput);
                 }
             }
-            return outputs;
+            return ret_anchor;
         },
     },
     {
@@ -335,14 +381,14 @@ const gram = [
         name: "NonEmptyText",
         pattern: [["BreakFreeText", "Text"]],
         callback: (r, context) => {
-            let outputs = "";
+            const ret_anchor = document.createElement("div");
             for (const rule of r.match) {
                 if (rule.type === "Rule") {
                     const currentOutput = rule.callback(context);
-                    outputs += currentOutput;
+                    ret_anchor.appendChild(currentOutput);
                 }
             }
-            return outputs;
+            return ret_anchor;
         },
     },
     {
@@ -363,7 +409,7 @@ const gram = [
             // TODO: Make more flexible so Empty need not be the last rule
         ],
         callback: (r, context) => {
-            let outputs = "";
+            const ret_anchor = document.createElement("div");
             const openItems = context.openItems;
             let previousBR = context.previousBR;
             for (const rule of r.match) {
@@ -373,56 +419,45 @@ const gram = [
                         // If the next item is a an ordered list element
                         if (openItems[0] === "OrderedListElem") {
                             // If we are in the middle of an ordered list
-                            outputs += rule.callback({
-                                openItems: openItems,
-                                previousBR: previousBR,
-                            });
+                            ret_anchor.appendChild(rule.callback({ openItems: openItems, previousBR: previousBR }));
                         }
                         else {
                             if (openItems[0] === "UnorderedListElem") {
                                 // The other one was open!
-                                outputs += "</ul>";
+                                const ulElem = document.createElement("ul");
+                                ret_anchor.appendChild(ulElem);
                                 openItems.pop();
                             }
                             // We are just starting an ordered list
                             openItems.push("OrderedListElem");
-                            outputs += "<ol>\n";
-                            outputs += rule.callback({
-                                openItems: openItems,
-                                previousBR: previousBR,
-                            });
+                            const olElem = document.createElement("ol");
+                            ret_anchor.appendChild(olElem);
+                            ret_anchor.appendChild(rule.callback({ openItems: openItems, previousBR: previousBR }));
                         }
                     }
                     else if (rule.name === "UnorderedListElem") {
                         // If the next item is a an un-ordered list element
                         if (openItems[0] === "UnorderedListElem") {
                             // If we are in the middle of an un-ordered list
-                            outputs += rule.callback({
-                                openItems: openItems,
-                                previousBR: previousBR,
-                            });
+                            ret_anchor.appendChild(rule.callback({ openItems: openItems, previousBR: previousBR }));
                         }
                         else {
                             if (openItems[0] === "OrderedListElem") {
                                 // The other one was open!
-                                outputs += "</ol>";
+                                const olElem = document.createElement("ol");
+                                ret_anchor.appendChild(olElem);
                                 openItems.pop();
                             }
                             // We are just starting an un-ordered list
                             openItems.push("UnorderedListElem");
-                            outputs += "<ul>\n";
-                            outputs += rule.callback({
-                                openItems: openItems,
-                                previousBR: previousBR,
-                            });
+                            const ulElem = document.createElement("ul");
+                            ret_anchor.appendChild(ulElem);
+                            ret_anchor.appendChild(rule.callback({ openItems: openItems, previousBR: previousBR }));
                         }
                     }
                     else if (rule.name === "Prog") {
                         // We could be in between
-                        outputs += rule.callback({
-                            openItems: openItems,
-                            previousBR: previousBR,
-                        });
+                        ret_anchor.appendChild(rule.callback({ openItems: openItems, previousBR: previousBR }));
                     }
                     else {
                         // We are in the middle of neither
@@ -430,25 +465,18 @@ const gram = [
                         switch (openItems[0]) {
                             case "UnorderedListElem":
                                 openItems.pop();
-                                outputs += "</ul>";
-                                outputs += rule.callback({
-                                    openItems: openItems,
-                                    previousBR: previousBR,
-                                });
+                                const ret_elem = document.createElement("ul");
+                                ret_anchor.appendChild(ret_elem);
+                                ret_anchor.appendChild(rule.callback({ openItems: openItems, previousBR: previousBR }));
                                 break;
                             case "OrderedListElem":
                                 openItems.pop();
-                                outputs += "</ol>";
-                                outputs += rule.callback({
-                                    openItems: openItems,
-                                    previousBR: previousBR,
-                                });
+                                const ret_elem2 = document.createElement("ol");
+                                ret_anchor.appendChild(ret_elem2);
+                                ret_anchor.appendChild(rule.callback({ openItems: openItems, previousBR: previousBR }));
                                 break;
                             default:
-                                outputs += rule.callback({
-                                    openItems: openItems,
-                                    previousBR: previousBR,
-                                });
+                                ret_anchor.appendChild(rule.callback({ openItems: openItems, previousBR: previousBR }));
                                 break;
                         }
                     }
@@ -457,7 +485,8 @@ const gram = [
                     // We are a BR
                     if (previousBR === true) {
                         // Add a break
-                        outputs += "<br>";
+                        const brElem = document.createElement("br");
+                        ret_anchor.appendChild(brElem);
                         previousBR = false;
                         continue;
                     }
@@ -471,7 +500,7 @@ const gram = [
                     throw new Error(`ERROR: Prog should never encounter a raw token, but did: '${rule.name}'`);
                 }
             }
-            return outputs;
+            return ret_anchor;
         },
     },
 ];

@@ -9,4 +9,4 @@ const output = Interpret(test_str);
 console.timeEnd();
 // console.log(output);
 // console.log(test_str);
-fs.writeFile("./testoutput.html", output, () => {});
+fs.writeFile("./testoutput.html", output.innerHTML, () => {});

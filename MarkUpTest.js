@@ -11,5 +11,5 @@ const output = (0, MarkUp_1.Interpret)(test_str);
 console.timeEnd();
 // console.log(output);
 // console.log(test_str);
-fs_1.default.writeFile("./testoutput.html", output, () => { });
+fs_1.default.writeFile("./testoutput.html", output.innerHTML, () => { });
 //# sourceMappingURL=MarkUpTest.js.map

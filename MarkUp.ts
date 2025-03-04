@@ -89,23 +89,58 @@ const token_desc_list: TokenDescription[] = [
   },
 ];
 
-const gram: Grammar<string> = [
+type GrammarRule<T, R> = {
+  type: "Rule";
+  name: string;
+  pattern: GrammarPattern[]; // TODO: Should really be using an abstraction here to be more clear
+  callback: (r: RuleMatch<T, R>, context?: any) => R;
+};
+
+type RuleMatch<T, R> = {
+  type: "Rule";
+  name: string;
+  callback: (context?: any) => R;
+  match: Match<T, R>[];
+};
+
+type TokenMatch<T> = {
+  type: "Token";
+  name: string;
+  match: string;
+};
+
+type Match<T, R> = RuleMatch<T, R> | TokenMatch<T>;
+// {
+//   // rule: GrammarRule<T> | Token;
+//   type: "Rule" | "Token";
+//   name: string;
+//   callback: (context?: any) => T;
+//   match: RuleMatch<T>[] | string;
+// };
+
+type Grammar<T, R> = GrammarRule<T, R>[];
+
+
+const gram: Grammar<string, HTMLElement> = [
   {
     type: "Rule",
     name: "HorizontalRule",
     pattern: [["DASH", "DASH", "DASH"]],
-    callback: (r: RuleMatch<string>) => {
-      return "<hr>";
+    callback: (r: RuleMatch<string, HTMLElement>) => {
+      return document.createElement("hr");
     },
   },
   {
     type: "Rule",
     name: "Head1",
     pattern: [["HASH", "STR", "BR"]],
-    callback: (r: RuleMatch<string>) => {
+    callback: (r: RuleMatch<string, HTMLElement>) => {
       const strToken = r.match[1];
       if (strToken.type === "Token") {
-        return `<h1>${strToken.match}</h1>`;
+        const ret_elem = document.createElement("h1");
+        ret_elem.textContent = strToken.match;
+        return ret_elem;
+        // return `<h1>${strToken.match}</h1>`;
       } else {
         throw new Error(
           "HEAD1: Expecting a STR, when we instead got an extended rule."
@@ -117,10 +152,13 @@ const gram: Grammar<string> = [
     type: "Rule",
     name: "Head2",
     pattern: [["HASH", "HASH", "STR", "BR"]],
-    callback: (r: RuleMatch<string>) => {
+    callback: (r: RuleMatch<string, HTMLElement>) => {
       const strToken = r.match[2];
       if (strToken.type === "Token") {
-        return `<h2>${strToken.match}</h2>`;
+        const ret_elem = document.createElement("h2");
+        ret_elem.textContent = strToken.match;
+        return ret_elem;
+        // return `<h2>${strToken.match}</h2>`;
       } else {
         throw new Error(
           "HEAD2: Expecting a STR, when we instead got an extended rule."
@@ -132,10 +170,13 @@ const gram: Grammar<string> = [
     type: "Rule",
     name: "Head3",
     pattern: [["HASH", "HASH", "HASH", "STR", "BR"]],
-    callback: (r: RuleMatch<string>) => {
+    callback: (r: RuleMatch<string, HTMLElement>) => {
       const strToken = r.match[3];
       if (strToken.type === "Token") {
-        return `<h3>${strToken.match}</h3>`;
+        const ret_elem = document.createElement("h3");
+        ret_elem.textContent = strToken.match;
+        return ret_elem;
+        // return `<h3>${strToken.match}</h3>`;
       } else {
         throw new Error(
           "HEAD3: Expecting a STR, when we instead got an extended rule."
@@ -147,8 +188,9 @@ const gram: Grammar<string> = [
     type: "Rule",
     name: "Indent",
     pattern: [["TAB"]],
-    callback: (r: RuleMatch<string>) => {
-      return "";
+    callback: (r: RuleMatch<string, HTMLElement>) => {
+      const ret_elem = document.createElement("div");
+      return ret_elem;
     },
   },
   {
@@ -159,10 +201,13 @@ const gram: Grammar<string> = [
       ["GT", "BreakFreeText", "BR"],
       ["GT", "BlockQuote"],
     ],
-    callback: (r: RuleMatch<string>, context) => {
+    callback: (r: RuleMatch<string, HTMLElement>, context) => {
       const subProgRule = r.match[1];
       if (subProgRule.type === "Rule") {
-        return `<blockquote>${subProgRule.callback(context)}</blockquote>`;
+        const ret_elem = document.createElement("blockquote");
+        ret_elem.textContent = `${subProgRule.callback(context)}`
+        return ret_elem;
+        // return `<blockquote>${subProgRule.callback(context)}</blockquote>`;
       }
       throw new Error("Error in 'BlockQuote', subProg is not a rule");
     },
@@ -171,10 +216,13 @@ const gram: Grammar<string> = [
     type: "Rule",
     name: "OrderedListElem",
     pattern: [["NUM_DOT", "Text", "BR"]],
-    callback: (r: RuleMatch<string>, context) => {
+    callback: (r: RuleMatch<string, HTMLElement>, context) => {
       const textToken = r.match[1];
       if (textToken.type === "Rule") {
-        return `<li>${textToken.callback(context)}</li>`;
+        const ret_elem = document.createElement("li");
+        ret_elem.textContent = `${textToken.callback(context)}`;
+        return ret_elem;
+        // return `<li>${textToken.callback(context)}</li>`;
       } else {
         throw new Error(
           "OrderedListElem: Expecting a Text, when we instead got a Token."
@@ -186,10 +234,13 @@ const gram: Grammar<string> = [
     type: "Rule",
     name: "UnorderedListElem",
     pattern: [["DASH", "Text", "BR"]],
-    callback: (r: RuleMatch<string>, context) => {
+    callback: (r: RuleMatch<string, HTMLElement>, context) => {
       const textToken = r.match[1];
       if (textToken.type === "Rule") {
-        return `<li>${textToken.callback(context)}</li>`;
+        const ret_elem = document.createElement("ul");
+        ret_elem.textContent = `${textToken.callback(context)}`;
+        return ret_elem;
+        // return `<li>${textToken.callback(context)}</li>`;
       } else {
         throw new Error(
           "UnorderedListElem: Expecting a Text, when we instead got a Token."
@@ -210,10 +261,14 @@ const gram: Grammar<string> = [
       ["STAR", "STAR", "STR", "STAR", "STAR"],
       ["UNDER", "UNDER", "STR", "UNDER", "UNDER"],
     ],
-    callback: (r: RuleMatch<string>) => {
+    callback: (r: RuleMatch<string, HTMLElement>) => {
       const strToken = r.match[2];
       if (strToken.type === "Token") {
-        return `<b>${strToken.match}</b>`;
+        // Return a bold element
+        const ret_elem = document.createElement("b");
+        ret_elem.textContent = strToken.match;
+        return ret_elem;
+        // return `<b>${strToken.match}</b>`;
       } else {
         throw new Error(
           "Bold: Expecting a STR, when we instead got an extended rule."
@@ -225,11 +280,15 @@ const gram: Grammar<string> = [
     type: "Rule",
     name: "Link",
     pattern: [["LBRACKET", "STR", "RBRACKET", "LPAREN", "STR", "RPAREN"]],
-    callback: (r: RuleMatch<string>) => {
+    callback: (r: RuleMatch<string, HTMLElement>) => {
       const strNameToken = r.match[1];
       const strHrefToken = r.match[4];
       if (strNameToken.type === "Token" && strHrefToken.type === "Token") {
-        return `<a href="${strHrefToken.match}">${strNameToken.match}</a>`;
+        const ret_elem = document.createElement("a");
+        ret_elem.href = strHrefToken.match;
+        ret_elem.textContent = strNameToken.match;
+        return ret_elem;
+        // return `<a href="${strHrefToken.match}">${strNameToken.match}</a>`;
       } else {
         throw new Error(
           "Link Element: Expecting a STR, when we instead got an extended rule."
@@ -244,10 +303,13 @@ const gram: Grammar<string> = [
       ["STAR", "STR", "STAR"],
       ["UNDER", "STR", "UNDER"],
     ],
-    callback: (r: RuleMatch<string>) => {
+    callback: (r: RuleMatch<string, HTMLElement>) => {
       const strToken = r.match[1];
       if (strToken.type === "Token") {
-        return `<em>${strToken.match}</em>`;
+        const ret_elem = document.createElement("em");
+        ret_elem.textContent = strToken.match;
+        return ret_elem;
+        // return `<em>${strToken.match}</em>`;
       } else {
         throw new Error(
           "Italic: Expecting a STR, when we instead got an extended rule."
@@ -277,33 +339,46 @@ const gram: Grammar<string> = [
       ["Link"],
       // ["EMPTY"],
     ],
-    callback: (r: RuleMatch<string>, context) => {
-      let outputs = "";
+    callback: (r: RuleMatch<string, HTMLElement>, context) => {
+      const ret_anchor = document.createElement("div");
       for (const rule of r.match) {
         if (rule.type === "Token") {
           // We are a token, we should be a STR or ESCAPED
           if (rule.name === "ESCAPE_DOLLAR") {
-            return "$";
+            const ret_elem = document.createElement("p");
+            ret_elem.textContent = "$";
+            ret_anchor.appendChild(ret_elem);
+            // return "$";
           } else if (rule.name === "ESCAPE_SEQ") {
             if (r.match[1].type === "Token") {
               // Should always hold
-              return r.match[1].match;
+              const ret_elem = document.createElement("p");
+              ret_elem.textContent = r.match[1].match;
+              ret_anchor.appendChild(ret_elem);
+              // return r.match[1].match;
             }
           } else if (rule.name === "KATEX") {
             const katexSlice = rule.match;
-            outputs += katex.renderToString(
-              katexSlice.slice(1, katexSlice.length - 1),
-              { output: "mathml" }
-            );
+						console.log(katex);
+						console.log(katexSlice);
+						// @ts-ignore: Unreachable code error
+						window.katex = katex;
+						const katexVal = katexSlice.slice(1, katexSlice.length - 1);
+            const katex_root_node = document.createElement("div");
+            katex.render(katexVal, katex_root_node);
+            ret_anchor.appendChild(katex_root_node);
+						console.log(`Rendering Latex for: ${katexVal}`);
+						console.log(katexVal.length);
           } else if (rule.name === "CODE_BLOCK") {
-            const codeSlice = rule.match.slice(1, rule.match.length - 1);
-            outputs += `<code>${codeSlice}</code>`;
-            // katex.renderToString(
-            //   katexSlice.slice(1, katexSlice.length - 1),
-            //   { output: "mathml" }
-            // );
+            const ret_elem = document.createElement("code");
+            ret_elem.textContent = rule.match.slice(1, rule.match.length - 1);
+            ret_anchor.appendChild(ret_elem);
+            // const codeSlice = rule.match.slice(1, rule.match.length - 1);
+            // outputs += `<code>${codeSlice}</code>`;
           } else if (rule.name === "STR") {
-            outputs += rule.match;
+            const ret_elem = document.createElement("p");
+            ret_elem.textContent = rule.match;
+            ret_anchor.appendChild(ret_elem);
             continue;
           } else {
             throw new Error(
@@ -312,40 +387,40 @@ const gram: Grammar<string> = [
           }
         } else if (rule.type === "Rule") {
           const currentOutput = rule.callback(context);
-          outputs += currentOutput;
+          ret_anchor.appendChild(currentOutput);
         }
       }
-      return outputs;
+      return ret_anchor;
     },
   },
   {
     type: "Rule",
     name: "Text",
     pattern: [["BreakFreeText", "Text"], ["EMPTY"]],
-    callback: (r: RuleMatch<string>, context) => {
-      let outputs = "";
+    callback: (r: RuleMatch<string, HTMLElement>, context) => {
+      const ret_anchor = document.createElement("div");
       for (const rule of r.match) {
         if (rule.type === "Rule") {
           const currentOutput = rule.callback(context);
-          outputs += currentOutput;
+          ret_anchor.appendChild(currentOutput);
         }
       }
-      return outputs;
+      return ret_anchor;
     },
   },
   {
     type: "Rule",
     name: "NonEmptyText",
     pattern: [["BreakFreeText", "Text"]],
-    callback: (r: RuleMatch<string>, context) => {
-      let outputs = "";
+    callback: (r: RuleMatch<string, HTMLElement>, context) => {
+      const ret_anchor = document.createElement("div");
       for (const rule of r.match) {
         if (rule.type === "Rule") {
           const currentOutput = rule.callback(context);
-          outputs += currentOutput;
+          ret_anchor.appendChild(currentOutput);
         }
       }
-      return outputs;
+      return ret_anchor;
     },
   },
   {
@@ -365,8 +440,8 @@ const gram: Grammar<string> = [
       ["EMPTY"], // IMPORTANT THAT THIS BE HERE
       // TODO: Make more flexible so Empty need not be the last rule
     ],
-    callback: (r: RuleMatch<string>, context) => {
-      let outputs = "";
+    callback: (r: RuleMatch<string, HTMLElement>, context) => {
+      const ret_anchor = document.createElement("div");
       const openItems: string[] = context.openItems;
       let previousBR = context.previousBR;
       for (const rule of r.match) {
@@ -376,52 +451,41 @@ const gram: Grammar<string> = [
             // If the next item is a an ordered list element
             if (openItems[0] === "OrderedListElem") {
               // If we are in the middle of an ordered list
-              outputs += rule.callback({
-                openItems: openItems,
-                previousBR: previousBR,
-              });
+              ret_anchor.appendChild(rule.callback({ openItems: openItems, previousBR: previousBR }));
             } else {
               if (openItems[0] === "UnorderedListElem") {
                 // The other one was open!
-                outputs += "</ul>";
+                const ulElem = document.createElement("ul");
+                ret_anchor.appendChild(ulElem);
                 openItems.pop();
               }
               // We are just starting an ordered list
               openItems.push("OrderedListElem");
-              outputs += "<ol>\n";
-              outputs += rule.callback({
-                openItems: openItems,
-                previousBR: previousBR,
-              });
+              const olElem = document.createElement("ol");
+              ret_anchor.appendChild(olElem);
+              ret_anchor.appendChild(rule.callback({ openItems: openItems, previousBR: previousBR }));
             }
           } else if (rule.name === "UnorderedListElem") {
             // If the next item is a an un-ordered list element
             if (openItems[0] === "UnorderedListElem") {
               // If we are in the middle of an un-ordered list
-              outputs += rule.callback({
-                openItems: openItems,
-                previousBR: previousBR,
-              });
+              ret_anchor.appendChild(rule.callback({ openItems: openItems, previousBR: previousBR }));
             } else {
               if (openItems[0] === "OrderedListElem") {
                 // The other one was open!
-                outputs += "</ol>";
+                const olElem = document.createElement("ol");
+                ret_anchor.appendChild(olElem);
                 openItems.pop();
               }
               // We are just starting an un-ordered list
               openItems.push("UnorderedListElem");
-              outputs += "<ul>\n";
-              outputs += rule.callback({
-                openItems: openItems,
-                previousBR: previousBR,
-              });
+              const ulElem = document.createElement("ul");
+              ret_anchor.appendChild(ulElem);
+              ret_anchor.appendChild(rule.callback({ openItems: openItems, previousBR: previousBR }));
             }
           } else if (rule.name === "Prog") {
             // We could be in between
-            outputs += rule.callback({
-              openItems: openItems,
-              previousBR: previousBR,
-            });
+            ret_anchor.appendChild(rule.callback({ openItems: openItems, previousBR: previousBR }));
           } else {
             // We are in the middle of neither
 
@@ -429,26 +493,19 @@ const gram: Grammar<string> = [
             switch (openItems[0]) {
               case "UnorderedListElem":
                 openItems.pop();
-                outputs += "</ul>";
-                outputs += rule.callback({
-                  openItems: openItems,
-                  previousBR: previousBR,
-                });
+                const ret_elem = document.createElement("ul");
+                ret_anchor.appendChild(ret_elem);
+                ret_anchor.appendChild(rule.callback({ openItems: openItems, previousBR: previousBR }));
                 break;
               case "OrderedListElem":
                 openItems.pop();
-                outputs += "</ol>";
-                outputs += rule.callback({
-                  openItems: openItems,
-                  previousBR: previousBR,
-                });
+                const ret_elem2 = document.createElement("ol");
+                ret_anchor.appendChild(ret_elem2);
+                ret_anchor.appendChild(rule.callback({ openItems: openItems, previousBR: previousBR }));
                 break;
 
               default:
-                outputs += rule.callback({
-                  openItems: openItems,
-                  previousBR: previousBR,
-                });
+                ret_anchor.appendChild(rule.callback({ openItems: openItems, previousBR: previousBR }));
                 break;
             }
           }
@@ -456,7 +513,8 @@ const gram: Grammar<string> = [
           // We are a BR
           if (previousBR === true) {
             // Add a break
-            outputs += "<br>";
+            const brElem = document.createElement("br");
+            ret_anchor.appendChild(brElem);
             previousBR = false;
             continue;
           } else {
@@ -470,12 +528,12 @@ const gram: Grammar<string> = [
           );
         }
       }
-      return outputs;
+      return ret_anchor;
     },
   },
 ];
 
-export const Interpret = (str: string): string => {
+export const Interpret = (str: string): HTMLElement => {
   const tokens = Tokenize(str, token_desc_list);
   const progRule = gram.find((val) => val.name === "Prog");
   if (progRule) {
